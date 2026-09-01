@@ -29,7 +29,7 @@
           </template>
           <v-list>
             <v-list-item v-if="smAndDown" :title="$t('files.button:delete-selected')" @click="multipleDelete" />
-            <v-list-item v-for="(action, index) in actions" :key="index" :title="action" @click="multipleAction(action)" />
+            <v-list-item v-for="(action, index) in actions" :key="index" :title="action.name" @click="multipleAction(action.name)" />
           </v-list>
         </v-menu>
         <v-dialog v-model="dialogEdit" max-width="500px">
@@ -67,14 +67,18 @@
       <v-icon class="mr-2" :icon="mdiDownload" @click="open(item)" />
       <v-icon class="mr-2" :icon="mdiPencil" @click="fileRename(item)" />
       <v-icon class="mr-2" :icon="mdiDelete" @click="fileRemove(item)" />
-      <v-menu v-if="actions.length > 0" bottom :offset-y="true">
+      <v-icon
+        v-for="(action, index) in inlineActions" :key="index"
+        class="mr-2" :icon="actionIcon(action)" :title="action.name"
+        @click="fileAction(action.name, item)" />
+      <v-menu v-if="menuActions.length > 0" bottom :offset-y="true">
         <template #activator="{ props }">
           <v-icon class="mr-2" :icon="mdiDotsVertical" v-bind="props" />
         </template>
         <v-list>
           <v-list-item
-            v-for="(action, index) in actions" :key="index"
-            :title="action" @click="fileAction(action, item)" />
+            v-for="(action, index) in menuActions" :key="index"
+            :title="action.name" @click="fileAction(action.name, item)" />
         </v-list>
       </v-menu>
     </template>
@@ -87,9 +91,25 @@
 <script>
 import Common from '../classes/common';
 import Storage from '../classes/storage';
-import { mdiDelete, mdiDotsVertical, mdiDownload, mdiPencil } from '@mdi/js';
+import {
+  mdiCloudUpload, mdiDelete, mdiDotsVertical, mdiDownload, mdiEmail, mdiPencil,
+  mdiPlayCircleOutline, mdiPrinter, mdiSend, mdiShareVariant, mdiUpload
+} from '@mdi/js';
 import { useDisplay } from 'vuetify';
 const storage = Storage.instance();
+
+// Shorthand names an action may use for its `icon` in config.local.js. Any
+// other value is passed to v-icon as-is, so a raw SVG path (e.g. the value of
+// any @mdi/js export) works too.
+const ACTION_ICONS = {
+  'cloud-upload': mdiCloudUpload,
+  email: mdiEmail,
+  printer: mdiPrinter,
+  run: mdiPlayCircleOutline,
+  send: mdiSend,
+  share: mdiShareVariant,
+  upload: mdiUpload
+};
 
 export default {
   name: 'Files',
@@ -130,6 +150,14 @@ export default {
   },
 
   computed: {
+    inlineActions() {
+      return this.actions.filter(a => a.inline);
+    },
+
+    menuActions() {
+      return this.actions.filter(a => !a.inline);
+    },
+
     headers() {
       const headers = [
         {
@@ -191,6 +219,10 @@ export default {
   },
 
   methods: {
+    actionIcon(action) {
+      return ACTION_ICONS[action.icon] || action.icon || mdiPlayCircleOutline;
+    },
+
     actionList() {
       this.$emit('mask', 1);
       Common.fetch('api/v1/context').then(context => {
