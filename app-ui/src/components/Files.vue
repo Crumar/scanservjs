@@ -67,6 +67,16 @@
       <v-icon class="mr-2" :icon="mdiDownload" @click="open(item)" />
       <v-icon class="mr-2" :icon="mdiPencil" @click="fileRename(item)" />
       <v-icon class="mr-2" :icon="mdiDelete" @click="fileRemove(item)" />
+      <v-menu v-if="actions.length > 0" bottom :offset-y="true">
+        <template #activator="{ props }">
+          <v-icon class="mr-2" :icon="mdiDotsVertical" v-bind="props" />
+        </template>
+        <v-list>
+          <v-list-item
+            v-for="(action, index) in actions" :key="index"
+            :title="action" @click="fileAction(action, item)" />
+        </v-list>
+      </v-menu>
     </template>
     <template #[`footer.page-text`]="items">
       {{ items.pageStart }} - {{ items.pageStop }} / {{ items.itemsLength }}
@@ -215,6 +225,19 @@ export default {
         this.$emit('notify', {type: 'e', message: error});
         this.$emit('mask', -1);
       });
+    },
+
+    async fileAction(actionName, file) {
+      this.$emit('mask', 1);
+      try {
+        await Common.fetch(`api/v1/files/${file.name}/actions/${actionName}`, {method: 'POST'});
+        this.$emit('notify', {type: 'i', message: `${this.$t('files.message:action', [actionName, file.name])}`});
+        this.fileList();
+      } catch (error) {
+        this.$emit('notify', {type: 'e', message: error});
+      } finally {
+        this.$emit('mask', -1);
+      }
     },
 
     fileRename(file) {
